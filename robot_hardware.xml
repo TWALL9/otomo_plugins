@@ -1,0 +1,9 @@
+<library path="otomo_plugins">
+  <class name="otomo_plugins/OtomoDiffdrive"
+         type="OtomoDiffdrive"
+         base_class_type="hardware_interface::SystemInterface">
+    <description>
+      Hardware Interface for Otomo's differential drive.
+    </description>
+  </class>
+</library>
