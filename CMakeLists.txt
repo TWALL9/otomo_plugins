@@ -38,19 +38,20 @@ target_include_directories(
   include
 )
 
-add_library(${PROJECT_NAME}_diffdrive
+add_library(${PROJECT_NAME}
   SHARED
   src/otomo_diffdrive/otomo_diffdrive.cpp
 )
 
 target_include_directories(
-  ${PROJECT_NAME}_diffdrive
-  PRIVATE
-  include
+  ${PROJECT_NAME}
+  PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
 )
 
 ament_target_dependencies(
-  ${PROJECT_NAME}_diffdrive
+  ${PROJECT_NAME}
   hardware_interface
   controller_manager
   async_serial
@@ -59,13 +60,23 @@ ament_target_dependencies(
   pluginlib
 )
 
-target_link_libraries(${PROJECT_NAME}_diffdrive ${PROJECT_NAME}_kiss_serial)
+target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}_kiss_serial)
 
-pluginlib_export_plugin_description_file(hardware_interface robot_hardware.xml)
+# target_compile_definitions(${PROJECT_NAME} PRIVATE OTOMO_PLUGINS_BUILDING_LIBRARY)
+
+pluginlib_export_plugin_description_file(hardware_interface plugins.xml)
 
 install(
-  TARGETS ${PROJECT_NAME}_kiss_serial ${PROJECT_NAME}_diffdrive
-  DESTINATION lib
+  DIRECTORY include/
+  DESTINATION include
+)
+
+install(
+  TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_kiss_serial
+  EXPORT export_${PROJECT_NAME}
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION lib
 )
 
 if(BUILD_TESTING)
@@ -78,5 +89,19 @@ if(BUILD_TESTING)
   #set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
+
+ament_export_include_directories(
+  include
+)
+
+ament_export_libraries(
+  ${PROJECT_NAME}
+  ${PROJECT_NAME}_kiss_serial
+)
+
+ament_export_targets(
+  export_${PROJECT_NAME}
+  HAS_LIBRARY_TARGET
+)
 
 ament_package()

@@ -127,14 +127,17 @@ hwi_return OtomoDiffdrive::write()
     return hwi_return::ERROR;
   }
 
-  auto l_cmd = l_wheel_.cmd_ / l_wheel_.rads_per_count() / config_.loop_rate_;
-  auto r_cmd = r_wheel_.cmd_ / r_wheel_.rads_per_count() / config_.loop_rate_;
+  auto l_cmd = l_wheel_.cmd_;  // rad/s
+  auto r_cmd = r_wheel_.cmd_;
+
+  RCLCPP_INFO_STREAM(logger_, "cmd: " << l_wheel_.cmd_ << ", " << r_wheel_.cmd_);
 
   // Create and send command to robot
   otomo::TopMsg msg;
-  otomo::FanControl * fan = new otomo::FanControl();
-  fan->set_on(true);
-  msg.set_allocated_fan(fan);
+  otomo::DiffDrive * diff_drive = new otomo::DiffDrive();
+  diff_drive->set_left_motor(l_cmd);
+  diff_drive->set_right_motor(r_cmd);
+  msg.set_allocated_diff_drive(diff_drive);
 
   KissOutputStream out_kiss;
   if (!encodeMessage(out_kiss, msg))
@@ -157,7 +160,10 @@ void OtomoDiffdrive::asyncSerialCallback(const std::vector<uint8_t>& buf, size_t
     int ret = recv_buf_.addByte(b);
     if (ret != 0)
     {
-      RCLCPP_WARN_STREAM(logger_, "receive buffer error: " << ret);
+      if (ret != -1)
+      {
+        // RCLCPP_WARN_STREAM(logger_, "receive buffer error: " << ret);
+      }
       recv_buf_.init();
     }
     else if (recv_buf_.isReady())
@@ -169,25 +175,31 @@ void OtomoDiffdrive::asyncSerialCallback(const std::vector<uint8_t>& buf, size_t
       otomo::TopMsg proto_msg;
       if (!proto_msg.ParseFromArray((const void *)&in_proto[0], in_proto.size()))
       {
-        RCLCPP_ERROR(logger_, "Could not deserialize proto msg from mcu!, 0x%x, %d", in_proto.front(), in_proto.size());
+        // RCLCPP_ERROR(logger_, "Could not deserialize proto msg from mcu!, 0x%x, %d", in_proto.front(), in_proto.size());
       }
       else if (proto_msg.has_state())
       {
-        RCLCPP_INFO(logger_, "Got robot state!");
         const auto& state = proto_msg.state();
         l_wheel_.vel_ = state.left_motor().angular_velocity();
+        l_wheel_.pos_ = state.left_motor().encoder();
         r_wheel_.vel_ = state.right_motor().angular_velocity();
+        r_wheel_.pos_ = state.right_motor().encoder();
+        // RCLCPP_INFO_STREAM(logger_, "Got robot state! " << l_wheel_.vel_ << ", " << r_wheel_.vel_);
+      }
+      else if (proto_msg.has_drive_response())
+      {
+        RCLCPP_INFO_STREAM(logger_, "Got robot response");
       }
     }
   }
 }
 
+}
+}
+
 #include "pluginlib/class_list_macros.hpp"
 
 PLUGINLIB_EXPORT_CLASS(
-  OtomoDiffdrive,
+  otomo_plugins::controllers::OtomoDiffdrive,
   hardware_interface::SystemInterface
 )
-
-}
-}

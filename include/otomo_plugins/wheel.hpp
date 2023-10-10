@@ -28,7 +28,7 @@ public:
     return name_;
   }
 
-  int rads_per_count() const
+  double rads_per_count() const
   {
     return rads_per_count_;
   }
@@ -40,7 +40,7 @@ public:
 
 private:
   std::string name_;
-  int rads_per_count_;
+  double rads_per_count_;
   int enc_ { 0 };
 
 };

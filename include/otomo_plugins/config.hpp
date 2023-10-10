@@ -7,11 +7,8 @@ namespace otomo_plugins
 namespace controllers
 {
 
-class DiffdriveConfiguration
+struct DiffdriveConfiguration
 {
-public:
-  DiffdriveConfiguration();
-
   std::string left_wheel_name_ { "left_wheel" };
   std::string right_wheel_name_ { "right_wheel" };
 
