@@ -6,7 +6,7 @@ namespace otomo_plugins
 namespace controllers
 {
 
-bool encodeMessage(KissOutputStream& out_kiss, otomo::TopMsg& msg)
+bool encodeMessage(async_serial::KissOutputStream& out_kiss, otomo::TopMsg& msg)
 {
   std::string out_string;
   if (!msg.SerializeToString(&out_string))
@@ -42,6 +42,7 @@ hwi_return OtomoDiffdrive::configure(const hardware_interface::HardwareInfo& inf
 
   config_.left_wheel_name_ = info_.hardware_parameters["left_wheel_name"];
   config_.right_wheel_name_ = info_.hardware_parameters["right_wheel_name"];
+
   config_.encoder_count_ = std::stoi(info_.hardware_parameters["encoder_count"]);
   l_wheel_ = Wheel(config_.left_wheel_name_, config_.encoder_count_);
   r_wheel_ = Wheel(config_.right_wheel_name_, config_.encoder_count_);
@@ -139,7 +140,7 @@ hwi_return OtomoDiffdrive::write()
   diff_drive->set_right_motor(r_cmd);
   msg.set_allocated_diff_drive(diff_drive);
 
-  KissOutputStream out_kiss;
+  async_serial::KissOutputStream out_kiss;
   if (!encodeMessage(out_kiss, msg))
   {
     RCLCPP_ERROR(logger_, "Cannot serialize fan msg to string");
@@ -169,8 +170,7 @@ void OtomoDiffdrive::asyncSerialCallback(const std::vector<uint8_t>& buf, size_t
     else if (recv_buf_.isReady())
     {
       uint8_t port;
-      std::vector<uint8_t> in_proto(recv_buf_.getBuffer(ret, port));
-      recv_buf_.init();
+      std::vector<uint8_t> in_proto = recv_buf_.getBuffer(ret, port);
 
       otomo::TopMsg proto_msg;
       if (!proto_msg.ParseFromArray((const void *)&in_proto[0], in_proto.size()))
@@ -190,6 +190,7 @@ void OtomoDiffdrive::asyncSerialCallback(const std::vector<uint8_t>& buf, size_t
       {
         RCLCPP_INFO_STREAM(logger_, "Got robot response");
       }
+      recv_buf_.init();
     }
   }
 }

@@ -11,10 +11,10 @@
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
 
 #include "async_serial/serial_port.hpp"
+#include "async_serial/kiss_tnc.hpp"
 
 #include "otomo_plugins/config.hpp"
 #include "otomo_plugins/wheel.hpp"
-#include "otomo_plugins/kiss_tnc.hpp"
 
 #include <vector>
 #include <chrono>
@@ -51,7 +51,7 @@ private:
 
   rclcpp::Logger logger_;
   std::chrono::time_point<std::chrono::system_clock> time_;
-  otomo_plugins::KissInputStream recv_buf_;
+  async_serial::KissInputStream recv_buf_;
   
 };
 

@@ -25,19 +25,6 @@ find_package(rclcpp REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system)
 
-add_library(
-  ${PROJECT_NAME}_kiss_serial
-  SHARED
-  src/kiss_serial/kiss_decode.cpp
-  src/kiss_serial/kiss_encode.cpp
-)
-
-target_include_directories(
-  ${PROJECT_NAME}_kiss_serial
-  PRIVATE
-  include
-)
-
 add_library(${PROJECT_NAME}
   SHARED
   src/otomo_diffdrive/otomo_diffdrive.cpp
@@ -60,7 +47,7 @@ ament_target_dependencies(
   pluginlib
 )
 
-target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}_kiss_serial)
+# target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}_kiss_serial)
 
 # target_compile_definitions(${PROJECT_NAME} PRIVATE OTOMO_PLUGINS_BUILDING_LIBRARY)
 
@@ -72,7 +59,7 @@ install(
 )
 
 install(
-  TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_kiss_serial
+  TARGETS ${PROJECT_NAME}
   EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
@@ -96,7 +83,6 @@ ament_export_include_directories(
 
 ament_export_libraries(
   ${PROJECT_NAME}
-  ${PROJECT_NAME}_kiss_serial
 )
 
 ament_export_targets(
