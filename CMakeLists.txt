@@ -6,9 +6,9 @@ if(NOT CMAKE_C_STANDARD)
   set(CMAKE_C_STANDARD 99)
 endif()
 
-# Default to C++14
+# Default to C++17
 if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 14)
+  set(CMAKE_CXX_STANDARD 17)
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -47,6 +47,9 @@ ament_target_dependencies(
   pluginlib
 )
 
+add_executable(diffdrive_test_node src/diffdrive_test/diffdrive_test_node.cpp)
+ament_target_dependencies(diffdrive_test_node rclcpp otomo_msgs async_serial)
+
 # target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}_kiss_serial)
 
 # target_compile_definitions(${PROJECT_NAME} PRIVATE OTOMO_PLUGINS_BUILDING_LIBRARY)
@@ -64,6 +67,11 @@ install(
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib
+)
+
+install(
+  TARGETS diffdrive_test_node
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 if(BUILD_TESTING)
