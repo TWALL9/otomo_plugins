@@ -3,9 +3,9 @@
 <package format="3">
   <name>otomo_plugins</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="thomaswallis0@gmail.com">tom</maintainer>
-  <license>TODO: License declaration</license>
+  <description>ros2_control interface plugins for Otomo personal robot</description>
+  <maintainer email="thomaswallis0@gmail.com">Tom Wallis</maintainer>
+  <license>GPL</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
