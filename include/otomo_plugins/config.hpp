@@ -2,13 +2,9 @@
 
 #include <string>
 
-namespace otomo_plugins
-{
-namespace controllers
-{
+namespace otomo_plugins::controllers {
 
-struct DiffdriveConfiguration
-{
+struct DiffdriveConfiguration {
   std::string left_wheel_name_ { "left_wheel" };
   std::string right_wheel_name_ { "right_wheel" };
 
@@ -20,7 +16,5 @@ struct DiffdriveConfiguration
   int timeout_ms_ { 1000 };
   float loop_rate_ { 30.0 };
 };
-
-}
 
 }

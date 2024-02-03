@@ -6,53 +6,45 @@
 
 #include "rclcpp/rclcpp.hpp"
 
-namespace otomo_plugins::diffdrive_test_node
-{
+namespace otomo_plugins::diffdrive_test_node {
 
-bool encodeMessage(async_serial::KissOutputStream& out_kiss, otomo::TopMsg& msg)
-{
+bool encode_message(async_serial::KissOutputStream& out_kiss, otomo::TopMsg& msg) {
   std::string out_string;
-  if (!msg.SerializeToString(&out_string))
-  {
+  if (!msg.SerializeToString(&out_string)) {
     return false;
   }
 
   const char* out_c = out_string.c_str();
   size_t len = out_string.size();
 
-  for (uint8_t i = 0; i < len; i++)
-  {
-    out_kiss.addByte(out_c[i]);
+  for (uint8_t i = 0; i < len; i++) {
+    out_kiss.add_byte(out_c[i]);
   }
 
   return true;
 }
 
-class DiffdriveTestNode : public rclcpp::Node
-{
+class DiffdriveTestNode : public rclcpp::Node {
 public:
-  DiffdriveTestNode() : Node("diff_drive_test_node"), logger_(rclcpp::get_logger("DiffdriveTestNode"))
-  {
+  DiffdriveTestNode() : Node("diff_drive_test_node"), logger_(rclcpp::get_logger("DiffdriveTestNode")) {
     pub_ = this->create_publisher<otomo_msgs::msg::Diffdrive>("robot_diff", 10);
     sub_ = this->create_subscription<otomo_msgs::msg::Diffdrive>("cmd_robot_diff",
-      10, std::bind(&DiffdriveTestNode::cmdCallback, this, std::placeholders::_1));
+      10, std::bind(&DiffdriveTestNode::cmd_callback, this, std::placeholders::_1));
 
     serial_port_ = std::shared_ptr<async_serial::SerialPort>(new async_serial::SerialPort("/dev/ttyOtomo", 115200));
     
-    if (!serial_port_->open())
-    {
+    if (!serial_port_->open()) {
       RCLCPP_ERROR(logger_, "Cannot open serial port!");
     }
 
-    serial_port_->addReceiveCallback(std::bind(
-      &DiffdriveTestNode::serialCallback, this, std::placeholders::_1, std::placeholders::_2
+    serial_port_->add_receive_callback(std::bind(
+      &DiffdriveTestNode::serial_callback, this, std::placeholders::_1, std::placeholders::_2
     ));
   }
 
 private:
 
-  void cmdCallback(const otomo_msgs::msg::Diffdrive::SharedPtr msg)
-  {
+  void cmd_callback(const otomo_msgs::msg::Diffdrive::SharedPtr msg) {
     otomo::TopMsg out_msg;
     otomo::DiffDrive * diff_drive = new otomo::DiffDrive();
     diff_drive->set_left_motor(msg->left);
@@ -60,38 +52,30 @@ private:
     out_msg.set_allocated_diff_drive(diff_drive);
 
     async_serial::KissOutputStream out_kiss;
-    if (!encodeMessage(out_kiss, out_msg))
-    {
+    if (!encode_message(out_kiss, out_msg)) {
       RCLCPP_ERROR(logger_, "Cannot serialize fan msg to string");
     }
 
-    auto buf = out_kiss.getBuffer();
+    auto buf = out_kiss.get_buffer();
     serial_port_->send(buf);
   }
 
-  void serialCallback(const std::vector<uint8_t>& buf, size_t num_received)
-  {
+  void serial_callback(const std::vector<uint8_t>& buf, size_t num_received) {
     (void)num_received;
 
-    for (const auto& b : buf)
-    {
-      int ret = recv_buf_.addByte(b);
+    for (const auto& b : buf) {
+      int ret = recv_buf_.add_byte(b);
       if (ret != 0)
       {
         recv_buf_.init();
-      }
-      else if (recv_buf_.isReady())
-      {
+      } else if (recv_buf_.is_ready()) {
         uint8_t port;
-        std::vector<uint8_t> in_proto = recv_buf_.getBuffer(ret, port);
+        std::vector<uint8_t> in_proto = recv_buf_.get_buffer(ret, port);
 
         otomo::TopMsg proto_msg;
-        if (!proto_msg.ParseFromArray((const void *)&in_proto[0], in_proto.size()))
-        {
+        if (!proto_msg.ParseFromArray((const void *)&in_proto[0], in_proto.size())) {
           // RCLCPP_ERROR(logger_, "Could not deserialize proto msg from mcu!, 0x%x, %d", in_proto.front(), in_proto.size());
-        }
-        else if (proto_msg.has_state())
-        {
+        } else if (proto_msg.has_state()) {
           const auto& state = proto_msg.state();
           auto dd_msg = otomo_msgs::msg::Diffdrive();
 
@@ -117,8 +101,7 @@ private:
 
 }
 
-int main(int argc, char * argv[])
-{
+int main(int argc, char * argv[]) {
   rclcpp::init(argc, argv);
   rclcpp::spin(std::make_shared<otomo_plugins::diffdrive_test_node::DiffdriveTestNode>());
   rclcpp::shutdown();

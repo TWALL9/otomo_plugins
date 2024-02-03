@@ -19,15 +19,11 @@
 #include <vector>
 #include <chrono>
 
-namespace otomo_plugins
-{
-namespace controllers
-{
+namespace otomo_plugins::controllers {
 
 using hwi_return = hardware_interface::return_type;
 
-class OtomoDiffdrive : public hardware_interface::BaseInterface<hardware_interface::SystemInterface>
-{
+class OtomoDiffdrive : public hardware_interface::BaseInterface<hardware_interface::SystemInterface> {
 
 public:
   OtomoDiffdrive();
@@ -42,7 +38,7 @@ public:
   hwi_return write() override;
 
 private:
-  void asyncSerialCallback(const std::vector<uint8_t>& buf, size_t num_received);
+  void async_serial_callback(const std::vector<uint8_t>& buf, size_t num_received);
 
   DiffdriveConfiguration config_;
   std::shared_ptr<async_serial::SerialPort> serial_port_;
@@ -55,5 +51,4 @@ private:
   
 };
 
-}
 }

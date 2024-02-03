@@ -3,33 +3,24 @@
 #include <string>
 #include<cmath>
 
-namespace otomo_plugins
-{
-namespace controllers
-{
+namespace otomo_plugins::controllers {
 
-class Wheel
-{
+class Wheel {
 public:
   Wheel() = default;
 
   Wheel(const std::string& name, int counts_per_rev)
-  : name_(name), rads_per_count_(2 * M_PI / counts_per_rev)
-  {
-  }
+  : name_(name), rads_per_count_(2 * M_PI / counts_per_rev) { }
 
-  double calcEncoderAngle()
-  {
+  double calc_encoder_angle() {
     return enc_ * rads_per_count_;
   }
 
-  const std::string& name() const
-  {
+  const std::string& name() const {
     return name_;
   }
 
-  double rads_per_count() const
-  {
+  double rads_per_count() const {
     return rads_per_count_;
   }
 
@@ -45,5 +36,4 @@ private:
 
 };
 
-}
 }
