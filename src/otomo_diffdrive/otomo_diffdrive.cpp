@@ -47,6 +47,11 @@ hwi_return OtomoDiffdrive::configure(const hardware_interface::HardwareInfo& inf
 
   status_ = hardware_interface::status::CONFIGURED;
 
+  auto node = rclcpp::Node("dummy");
+
+  cmd_pub_ = node.create_publisher<otomo_msgs::msg::Diffdrive>("/cmd_robot_diff", 10);
+  recv_pub_ = node.create_publisher<otomo_msgs::msg::Diffdrive>("/robot_diff", 10);
+
   return hwi_return::OK;  
 }
 
@@ -113,6 +118,11 @@ hwi_return OtomoDiffdrive::write() {
 
   RCLCPP_INFO_STREAM(logger_, "cmd: " << l_wheel_.cmd_ << ", " << r_wheel_.cmd_);
 
+  auto dd_msg = otomo_msgs::msg::Diffdrive();
+  dd_msg.left = l_cmd;
+  dd_msg.right = r_cmd;
+  cmd_pub_->publish(dd_msg);
+
   // Create and send command to robot
   otomo::TopMsg msg;
   otomo::DiffDrive * diff_drive = new otomo::DiffDrive();
@@ -132,10 +142,8 @@ hwi_return OtomoDiffdrive::write() {
 }
 
 void OtomoDiffdrive::async_serial_callback(const std::vector<uint8_t>& buf, size_t num_received) {
-  (void)num_received;
-
-  for (const auto& b : buf) {
-    int ret = recv_buf_.add_byte(b);
+  for (size_t i = 0; i < num_received; i++) {
+    int ret = recv_buf_.add_byte(buf[i]);
     if (ret != 0) {
       if (ret != -1) {
         // RCLCPP_WARN_STREAM(logger_, "receive buffer error: " << ret);
@@ -147,13 +155,19 @@ void OtomoDiffdrive::async_serial_callback(const std::vector<uint8_t>& buf, size
 
       otomo::TopMsg proto_msg;
       if (!proto_msg.ParseFromArray((const void *)&in_proto[0], in_proto.size())) {
-        // RCLCPP_ERROR(logger_, "Could not deserialize proto msg from mcu!, 0x%x, %d", in_proto.front(), in_proto.size());
+        RCLCPP_ERROR(logger_, "Could not deserialize proto msg from mcu!, 0x%x, %d", in_proto.front(), in_proto.size());
       } else if (proto_msg.has_state()) {
         const auto& state = proto_msg.state();
         l_wheel_.vel_ = state.left_motor().angular_velocity();
         l_wheel_.pos_ = state.left_motor().encoder();
         r_wheel_.vel_ = state.right_motor().angular_velocity();
         r_wheel_.pos_ = state.right_motor().encoder();
+
+        auto dd_msg = otomo_msgs::msg::Diffdrive();
+        dd_msg.left = l_wheel_.vel_;
+        dd_msg.right = r_wheel_.vel_;
+        recv_pub_->publish(dd_msg);
+
         // RCLCPP_INFO_STREAM(logger_, "Got robot state! " << l_wheel_.vel_ << ", " << r_wheel_.vel_);
       } else if (proto_msg.has_drive_response()) {
         RCLCPP_INFO_STREAM(logger_, "Got robot response");

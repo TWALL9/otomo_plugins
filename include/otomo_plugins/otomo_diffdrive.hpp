@@ -16,6 +16,8 @@
 #include "otomo_plugins/config.hpp"
 #include "otomo_plugins/wheel.hpp"
 
+#include "otomo_msgs/msg/diffdrive.hpp"
+
 #include <vector>
 #include <chrono>
 
@@ -48,6 +50,9 @@ private:
   rclcpp::Logger logger_;
   std::chrono::time_point<std::chrono::system_clock> time_;
   async_serial::KissInputStream recv_buf_;
+
+  rclcpp::Publisher<otomo_msgs::msg::Diffdrive>::SharedPtr cmd_pub_;
+  rclcpp::Publisher<otomo_msgs::msg::Diffdrive>::SharedPtr recv_pub_;
   
 };
 

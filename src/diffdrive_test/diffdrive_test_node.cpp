@@ -63,8 +63,9 @@ private:
   void serial_callback(const std::vector<uint8_t>& buf, size_t num_received) {
     (void)num_received;
 
-    for (const auto& b : buf) {
-      int ret = recv_buf_.add_byte(b);
+    RCLCPP_INFO_STREAM(logger_, "received: " << num_received);
+    for (size_t i = 0; i < num_received; i++) {
+      int ret = recv_buf_.add_byte(buf[i]);
       if (ret != 0)
       {
         recv_buf_.init();
