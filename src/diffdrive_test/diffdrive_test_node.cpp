@@ -28,11 +28,12 @@ class DiffdriveTestNode : public rclcpp::Node {
 public:
   DiffdriveTestNode() : Node("diff_drive_test_node"), logger_(rclcpp::get_logger("DiffdriveTestNode")) {
     pub_ = this->create_publisher<otomo_msgs::msg::Diffdrive>("robot_diff", 10);
+    repub_ = this->create_publisher<otomo_msgs::msg::Diffdrive>("cmd_repub", 10);
     sub_ = this->create_subscription<otomo_msgs::msg::Diffdrive>("cmd_robot_diff",
       10, std::bind(&DiffdriveTestNode::cmd_callback, this, std::placeholders::_1));
 
     serial_port_ = std::shared_ptr<async_serial::SerialPort>(new async_serial::SerialPort("/dev/ttyOtomo", 115200));
-    
+
     if (!serial_port_->open()) {
       RCLCPP_ERROR(logger_, "Cannot open serial port!");
     }
@@ -58,12 +59,15 @@ private:
 
     auto buf = out_kiss.get_buffer();
     serial_port_->send(buf);
+
+    auto dd_msg = otomo_msgs::msg::Diffdrive();
+    dd_msg.header.stamp = this->get_clock()->now();
+    dd_msg.left = msg->left;
+    dd_msg.right = msg->right;
+    repub_->publish(dd_msg);
   }
 
   void serial_callback(const std::vector<uint8_t>& buf, size_t num_received) {
-    (void)num_received;
-
-    RCLCPP_INFO_STREAM(logger_, "received: " << num_received);
     for (size_t i = 0; i < num_received; i++) {
       int ret = recv_buf_.add_byte(buf[i]);
       if (ret != 0)
@@ -75,11 +79,11 @@ private:
 
         otomo::TopMsg proto_msg;
         if (!proto_msg.ParseFromArray((const void *)&in_proto[0], in_proto.size())) {
-          // RCLCPP_ERROR(logger_, "Could not deserialize proto msg from mcu!, 0x%x, %d", in_proto.front(), in_proto.size());
+          RCLCPP_WARN(logger_, "Could not deserialize proto msg from mcu!, 0x%x, %d", in_proto.front(), in_proto.size());
         } else if (proto_msg.has_state()) {
           const auto& state = proto_msg.state();
           auto dd_msg = otomo_msgs::msg::Diffdrive();
-
+          dd_msg.header.stamp = this->get_clock()->now();
           dd_msg.left = state.left_motor().angular_velocity();
           dd_msg.right = state.right_motor().angular_velocity();
           RCLCPP_INFO_STREAM(logger_, "Got robot state! " << dd_msg.left << ", " << dd_msg.right);
@@ -97,6 +101,7 @@ private:
 
   rclcpp::Subscription<otomo_msgs::msg::Diffdrive>::SharedPtr sub_;
   rclcpp::Publisher<otomo_msgs::msg::Diffdrive>::SharedPtr pub_;
+  rclcpp::Publisher<otomo_msgs::msg::Diffdrive>::SharedPtr repub_;
 
 };
 

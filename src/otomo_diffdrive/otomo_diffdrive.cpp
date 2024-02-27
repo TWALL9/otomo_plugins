@@ -1,6 +1,11 @@
 #include "otomo_plugins/otomo_diffdrive.hpp"
 #include "otomo_msgs/otomo.pb.h"
 
+#include <iostream>
+#include <chrono>
+#include <iomanip>
+#include <sstream>
+
 namespace otomo_plugins::controllers {
 
 bool encode_message(async_serial::KissOutputStream& out_kiss, otomo::TopMsg& msg) {
@@ -49,15 +54,15 @@ hwi_return OtomoDiffdrive::configure(const hardware_interface::HardwareInfo& inf
 
   auto node = rclcpp::Node("dummy");
 
-  cmd_pub_ = node.create_publisher<otomo_msgs::msg::Diffdrive>("/cmd_robot_diff", 10);
-  recv_pub_ = node.create_publisher<otomo_msgs::msg::Diffdrive>("/robot_diff", 10);
+  left_pub_ = node.create_publisher<otomo_msgs::msg::Diffdrive>("/left_motor", 10);
+  right_pub_ = node.create_publisher<otomo_msgs::msg::Diffdrive>("/right_motor", 10);
 
-  return hwi_return::OK;  
+  return hwi_return::OK;
 }
 
 std::vector<hardware_interface::StateInterface> OtomoDiffdrive::export_state_interfaces() {
   std::vector<hardware_interface::StateInterface> state_interfaces;
-  
+
   state_interfaces.push_back(hardware_interface::StateInterface(l_wheel_.name(), hardware_interface::HW_IF_VELOCITY, &l_wheel_.vel_));
   state_interfaces.push_back(hardware_interface::StateInterface(l_wheel_.name(), hardware_interface::HW_IF_POSITION, &l_wheel_.pos_));
   state_interfaces.push_back(hardware_interface::StateInterface(r_wheel_.name(), hardware_interface::HW_IF_VELOCITY, &r_wheel_.vel_));
@@ -116,12 +121,7 @@ hwi_return OtomoDiffdrive::write() {
   auto l_cmd = l_wheel_.cmd_;  // rad/s
   auto r_cmd = r_wheel_.cmd_;
 
-  RCLCPP_INFO_STREAM(logger_, "cmd: " << l_wheel_.cmd_ << ", " << r_wheel_.cmd_);
-
-  auto dd_msg = otomo_msgs::msg::Diffdrive();
-  dd_msg.left = l_cmd;
-  dd_msg.right = r_cmd;
-  cmd_pub_->publish(dd_msg);
+  // RCLCPP_INFO_STREAM(logger_, "cmd: " << l_wheel_.cmd_ << ", " << r_wheel_.cmd_);
 
   // Create and send command to robot
   otomo::TopMsg msg;
@@ -163,10 +163,24 @@ void OtomoDiffdrive::async_serial_callback(const std::vector<uint8_t>& buf, size
         r_wheel_.vel_ = state.right_motor().angular_velocity();
         r_wheel_.pos_ = state.right_motor().encoder();
 
-        auto dd_msg = otomo_msgs::msg::Diffdrive();
-        dd_msg.left = l_wheel_.vel_;
-        dd_msg.right = r_wheel_.vel_;
-        recv_pub_->publish(dd_msg);
+        auto left_msg = otomo_msgs::msg::Diffdrive();
+        // left_msg.header.stamp = node_->get_clock()->now();
+        left_msg.left = l_wheel_.cmd_;
+        left_msg.right = l_wheel_.vel_;
+        left_pub_->publish(left_msg);
+
+        auto right_msg = otomo_msgs::msg::Diffdrive();
+        // right_msg.header.stamp = left_msg.header.stamp;
+        right_msg.right = r_wheel_.cmd_;
+        right_msg.right = r_wheel_.vel_;
+        right_pub_->publish(right_msg);
+
+        const auto now = std::chrono::system_clock::now();
+        double stamp = static_cast<double>(now.time_since_epoch().count()) / 1000000000;
+        std::stringstream ss;
+        ss << std::fixed << std::setprecision(5);
+        ss << stamp << ", " << l_wheel_.cmd_ << ", " << l_wheel_.vel_ << ", " << r_wheel_.cmd_ << ", " << r_wheel_.vel_;
+        RCLCPP_INFO(logger_, "%s", ss.str().c_str());
 
         // RCLCPP_INFO_STREAM(logger_, "Got robot state! " << l_wheel_.vel_ << ", " << r_wheel_.vel_);
       } else if (proto_msg.has_drive_response()) {

@@ -51,9 +51,9 @@ private:
   std::chrono::time_point<std::chrono::system_clock> time_;
   async_serial::KissInputStream recv_buf_;
 
-  rclcpp::Publisher<otomo_msgs::msg::Diffdrive>::SharedPtr cmd_pub_;
-  rclcpp::Publisher<otomo_msgs::msg::Diffdrive>::SharedPtr recv_pub_;
-  
+  rclcpp::Publisher<otomo_msgs::msg::Diffdrive>::SharedPtr left_pub_;
+  rclcpp::Publisher<otomo_msgs::msg::Diffdrive>::SharedPtr right_pub_;
+
 };
 
 }
