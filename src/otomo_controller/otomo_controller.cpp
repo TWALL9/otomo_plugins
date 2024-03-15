@@ -56,6 +56,14 @@ cb_return OtomoController::on_configure(const rclcpp_lifecycle::State& previous_
   double default_i = node_->get_parameter("pid_default_i_term").as_double();
   double default_d = node_->get_parameter("pid_default_d_term").as_double();
 
+  PidParams default_param {
+    .p = default_p,
+    .i = default_i,
+    .d = default_d,
+    .update_pid = false,
+  };
+  pid_controllers_.insert("default", default_param);
+
   for (const auto& name : controller_names) {
     if (pid_controllers_.find(name) == pid_controllers_.end()) {
       PidParams param {
@@ -64,15 +72,31 @@ cb_return OtomoController::on_configure(const rclcpp_lifecycle::State& previous_
         .d = default_d,
         .update_pid = false,
       };
-      auto fn std::bind(&OtomoController::pid_update_cb, this, _1);
+      // auto fn std::bind(&OtomoController::pid_update_cb, this, _1);
       pid_controllers_.insert(name, param);
-
     }
   }
 
-  return cb_return::OK;
+  // todo create vec of subs for individual pid controllers
+  pid_subs_ = node_->create_subscription<otomo_msgs::msg::Pid>(
+    "/otomo_controller/set_pid/default",
+    rclcpp::SystemDefaultsQoS(),
+    [this](const std::shared_ptr<otomo_msgs::msg::Pid> pid) -> void {
+      RCLCPP_WARN(node_->get_logger(), "Received PID update for default");
+      auto old_pid = pid_controllers_["default"];
+      old_pid.p = pid.p;
+      old_pid.i = pid.i;
+      old_pid.d = pid.d;
+      old_pid.update_pid = true;
+    });
 
+  return cb_return::OK;
 }
+
+cb_return OtomoController::on_activate(const rclcpp_lifecycle::State& previous_state) {
+  
+}
+
 
 ci_return OtomoController::update() {
   auto logger = node_->get_logger();
@@ -86,9 +110,13 @@ ci_return OtomoController::update() {
     return ci_return::OK;
   }
 
-  if (update_pid_) {
-    update_pid_ = false;
-    RCLCPP_INFO_STREAM(logger, "Updating PID params: p: " << pid_params_.p, << ", i: " << pid_params_.i << ", d" << pid_params_.d);
+  for (auto &ctrl : pid_controllers_) {
+    auto name = ctrl.first;
+    auto pid = ctrl.second;
+    if (pid.update_pid) {
+      pid.update_pid = false;
+      RCLCPP_INFO_STREAM(logger, "Updating " << name << " PID params: p: " << pid_params_.p, << ", i: " << pid_params_.i << ", d" << pid_params_.d);
+    }
   }
 
   return ci_return::OK;
@@ -96,4 +124,9 @@ ci_return OtomoController::update() {
 
 
 
-}
+} // namespace otomo_plugins::controllers
+
+#include "class_loader/register_macro.hpp"
+
+CLASS_LOADER_REGISTER_CLASS(
+  otomo_plugins::controllers::OtomoController, controller_interface::ControllerInterface)

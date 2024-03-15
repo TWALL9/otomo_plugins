@@ -54,7 +54,7 @@ protected:
 
   bool is_halted_ {false};
 
-  std::vector<rclcpp::Subscription<otomo_msgs::msg::Pid>::SharedPtr> pid_subs_;
+  rclcpp::Subscription<otomo_msgs::msg::Pid>::SharedPtr pid_subs_;
 };
 
 }
