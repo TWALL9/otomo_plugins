@@ -76,6 +76,10 @@ std::vector<hardware_interface::CommandInterface> OtomoDiffdrive::export_command
   command_interfaces.push_back(hardware_interface::CommandInterface(l_wheel_.name(), hardware_interface::HW_IF_VELOCITY, &l_wheel_.cmd_));
   command_interfaces.push_back(hardware_interface::CommandInterface(r_wheel_.name(), hardware_interface::HW_IF_VELOCITY, &r_wheel_.cmd_));
 
+  command_interfaces.push_back(hardware_interface::CommandInterface("default", HW_IF_PROPORTIONAL, &pid_.p));
+  command_interfaces.push_back(hardware_interface::CommandInterface("default", HW_IF_INTEGRAL, &pid_.i));
+  command_interfaces.push_back(hardware_interface::CommandInterface("default", HW_IF_DERIVATIVE, &pid_.d));
+
   return command_interfaces;
 }
 
@@ -131,12 +135,36 @@ hwi_return OtomoDiffdrive::write() {
   msg.set_allocated_diff_drive(diff_drive);
 
   async_serial::KissOutputStream out_kiss;
-  if (!encode_message(out_kiss, msg)) {
-    RCLCPP_ERROR(logger_, "Cannot serialize fan msg to string");
+  if (encode_message(out_kiss, msg)) {
+    auto buf = out_kiss.get_buffer();
+    serial_port_->send(buf);
+  } else {
+    RCLCPP_ERROR(logger_, "Cannot serialize diffdrive msg to string");
   }
 
-  auto buf = out_kiss.get_buffer();
-  serial_port_->send(buf);
+  // Update PID params
+  if (old_pid_.p != pid_.p || old_pid_.i != pid_.i || old_pid_.d != pid_.d) {
+    old_pid_.p = pid_.p;
+    old_pid_.i = pid_.i;
+    old_pid_.d = pid_.d;
+
+    RCLCPP_WARN(logger_, "Updating PID: %f, %f, %f", pid_.p, pid_.i, pid_.d);
+
+    otomo::TopMsg pid_msg;
+    otomo::Pid * pid = new otomo::Pid();
+    pid->set_p(pid_.p);
+    pid->set_i(pid_.i);
+    pid->set_d(pid_.d);
+
+    pid_msg.set_allocated_pid(pid);
+    async_serial::KissOutputStream out_pid;
+    if (encode_message(out_pid, pid_msg)) {
+      auto buf_pid = out_pid.get_buffer();
+      serial_port_->send(buf_pid);
+    } else {
+      RCLCPP_ERROR(logger_, "Cannot serialize pid msg to string");
+    }
+  }
 
   return hwi_return::OK;
 }
@@ -180,7 +208,7 @@ void OtomoDiffdrive::async_serial_callback(const std::vector<uint8_t>& buf, size
         std::stringstream ss;
         ss << std::fixed << std::setprecision(5);
         ss << stamp << ", " << l_wheel_.cmd_ << ", " << l_wheel_.vel_ << ", " << r_wheel_.cmd_ << ", " << r_wheel_.vel_;
-        RCLCPP_INFO(logger_, "%s", ss.str().c_str());
+        // RCLCPP_INFO(logger_, "%s", ss.str().c_str());
 
         // RCLCPP_INFO_STREAM(logger_, "Got robot state! " << l_wheel_.vel_ << ", " << r_wheel_.vel_);
       } else if (proto_msg.has_drive_response()) {

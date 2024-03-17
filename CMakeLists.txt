@@ -28,6 +28,7 @@ find_package(Boost REQUIRED COMPONENTS system)
 add_library(${PROJECT_NAME}
   SHARED
   src/otomo_diffdrive/otomo_diffdrive.cpp
+  src/otomo_controller/otomo_controller.cpp
 )
 
 target_include_directories(
@@ -54,7 +55,8 @@ ament_target_dependencies(diffdrive_test_node rclcpp otomo_msgs async_serial)
 
 # target_compile_definitions(${PROJECT_NAME} PRIVATE OTOMO_PLUGINS_BUILDING_LIBRARY)
 
-pluginlib_export_plugin_description_file(hardware_interface plugins.xml)
+pluginlib_export_plugin_description_file(hardware_interface interface_plugins.xml)
+pluginlib_export_plugin_description_file(controller_interface controller_plugins.xml)
 
 install(
   DIRECTORY include/

@@ -15,6 +15,7 @@
 
 #include "otomo_plugins/config.hpp"
 #include "otomo_plugins/wheel.hpp"
+#include "otomo_plugins/pid_params.hpp"
 
 #include "otomo_msgs/msg/diffdrive.hpp"
 
@@ -46,6 +47,9 @@ private:
   std::shared_ptr<async_serial::SerialPort> serial_port_;
   Wheel l_wheel_;
   Wheel r_wheel_;
+
+  PidParams pid_;
+  PidParams old_pid_;
 
   rclcpp::Logger logger_;
   std::chrono::time_point<std::chrono::system_clock> time_;

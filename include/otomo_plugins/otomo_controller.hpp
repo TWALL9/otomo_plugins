@@ -13,6 +13,8 @@
 
 #include "otomo_msgs/msg/pid.hpp"
 
+#include "otomo_plugins/pid_params.hpp"
+
 #include <chrono>
 #include <string>
 #include <vector>
@@ -22,7 +24,7 @@ namespace otomo_plugins::controllers {
 
 using ci_return = controller_interface::return_type;
 using interface_return = controller_interface::InterfaceConfiguration;
-using cb_return = rlcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
+using cb_return = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
 
 class OtomoController : public controller_interface::ControllerInterface {
 
@@ -44,13 +46,14 @@ public:
 protected:
   void pid_update_cb(const otomo_msgs::msg::Pid::SharedPtr msg);
 
-  struct PidParams {
-    double p = 0.0;
-    double i = 0.0;
-    double d = 0.0;
-    bool update_pid = false;
-  };
   std::map<std::string, PidParams> pid_controllers_;
+
+  struct PidHandle {
+    std::reference_wrapper<hardware_interface::LoanedCommandInterface> p;
+    std::reference_wrapper<hardware_interface::LoanedCommandInterface> i;
+    std::reference_wrapper<hardware_interface::LoanedCommandInterface> d;
+  };
+  std::map<std::string, PidHandle> registered_pid_handles_;
 
   bool is_halted_ {false};
 
