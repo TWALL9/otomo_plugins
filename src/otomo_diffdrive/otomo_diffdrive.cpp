@@ -209,8 +209,6 @@ void OtomoDiffdrive::async_serial_callback(const std::vector<uint8_t>& buf, size
         ss << std::fixed << std::setprecision(5);
         ss << stamp << ", " << l_wheel_.cmd_ << ", " << l_wheel_.vel_ << ", " << r_wheel_.cmd_ << ", " << r_wheel_.vel_;
         RCLCPP_INFO(logger_, "%s", ss.str().c_str());
-
-        // RCLCPP_INFO_STREAM(logger_, "Got robot state! " << l_wheel_.vel_ << ", " << r_wheel_.vel_);
       } else if (proto_msg.has_drive_response()) {
         RCLCPP_INFO_STREAM(logger_, "Got robot response");
       }
