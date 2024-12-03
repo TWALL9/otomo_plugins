@@ -6,24 +6,32 @@ if(NOT CMAKE_C_STANDARD)
   set(CMAKE_C_STANDARD 99)
 endif()
 
-# Default to C++17
+set(CMAKE_VERBOSE_MAKEFILE ON)
+
+# Default to C++20
 if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD 20)
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+set(PLUGINS_DEPENDS
+  hardware_interface
+  controller_manager
+  async_serial
+  otomo_msgs
+  rclcpp
+  pluginlib
+)
+
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(otomo_msgs REQUIRED)
-find_package(async_serial REQUIRED)
-find_package(hardware_interface REQUIRED)
-find_package(controller_manager REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(pluginlib REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system)
+foreach(DEP IN ITEMS ${PLUGINS_DEPENDS})
+  find_package(${DEP} REQUIRED)
+endforeach()
 
 add_library(${PROJECT_NAME}
   SHARED
@@ -39,21 +47,12 @@ target_include_directories(
 )
 
 ament_target_dependencies(
-  ${PROJECT_NAME}
-  hardware_interface
-  controller_manager
-  async_serial
-  otomo_msgs
-  rclcpp
-  pluginlib
+  ${PROJECT_NAME} PUBLIC
+  ${PLUGINS_DEPENDS}
 )
 
 add_executable(diffdrive_test_node src/diffdrive_test/diffdrive_test_node.cpp)
 ament_target_dependencies(diffdrive_test_node rclcpp otomo_msgs async_serial)
-
-# target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}_kiss_serial)
-
-# target_compile_definitions(${PROJECT_NAME} PRIVATE OTOMO_PLUGINS_BUILDING_LIBRARY)
 
 pluginlib_export_plugin_description_file(hardware_interface interface_plugins.xml)
 pluginlib_export_plugin_description_file(controller_interface controller_plugins.xml)

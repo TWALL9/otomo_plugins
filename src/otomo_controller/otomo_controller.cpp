@@ -1,22 +1,15 @@
+#include <memory>
+
 #include "otomo_plugins/otomo_controller.hpp"
 
 #include "lifecycle_msgs/msg/state.hpp"
-
-#include <memory>
+#include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
 
 namespace otomo_plugins::controllers {
 
 using std::placeholders::_1;
 
-OtomoController::OtomoController()
-  : controller_interface::ControllerInterface() {}
-
-ci_return OtomoController::init(const std::string& controller_name) {
-  auto ret = ControllerInterface::init(controller_name);
-  if (ret != ci_return::OK) {
-    return ret;
-  }
-
+cb_return OtomoController::on_init() {
   try {
     // default to nothing,
     auto_declare<double>("pid_default_p_term", 0.0);
@@ -24,20 +17,22 @@ ci_return OtomoController::init(const std::string& controller_name) {
     auto_declare<double>("pid_default_d_term", 0.0);
 
     auto_declare<std::vector<std::string>>("pid_controllers", {});
-
   } catch (const std::exception& e) {
-    RCLCPP_ERROR(node_->get_logger(), "Exception during %s init stage: %s", controller_name.c_str(), e.what());
-    return ci_return::ERROR;
+    RCLCPP_ERROR(get_node()->get_logger(),
+      "Exception during otomo_controller init stage: %s",
+      e.what()
+    );
+    return cb_return::ERROR;
   }
 
-  return ci_return::OK;
+  return cb_return::SUCCESS;
 }
 
 interface_return OtomoController::command_interface_configuration() const {
   std::vector<std::string> command_interfaces;
 
   if (pid_controllers_.empty()) {
-    RCLCPP_WARN(node_->get_logger(), "command interface empty controller map");
+    RCLCPP_WARN(get_node()->get_logger(), "command interface empty controller map");
   }
 
   for (const auto& pid_name : pid_controllers_) {
@@ -55,13 +50,13 @@ interface_return OtomoController::state_interface_configuration() const {
 }
 
 cb_return OtomoController::on_configure(const rclcpp_lifecycle::State&) {
-  auto logger = node_->get_logger();
+  auto logger = get_node()->get_logger();
 
   std::vector<std::string> controller_names;
-  controller_names = node_->get_parameter("pid_controllers").as_string_array();
-  double default_p = node_->get_parameter("pid_default_p_term").as_double();
-  double default_i = node_->get_parameter("pid_default_i_term").as_double();
-  double default_d = node_->get_parameter("pid_default_d_term").as_double();
+  controller_names = get_node()->get_parameter("pid_controllers").as_string_array();
+  double default_p = get_node()->get_parameter("pid_default_p_term").as_double();
+  double default_i = get_node()->get_parameter("pid_default_i_term").as_double();
+  double default_d = get_node()->get_parameter("pid_default_d_term").as_double();
 
   // PidParams default_param { default_p, default_i, default_d, false };
   // pid_controllers_.insert({ "default", default_param });
@@ -81,11 +76,11 @@ cb_return OtomoController::on_configure(const rclcpp_lifecycle::State&) {
   }
 
   // todo create vec of subs for individual pid controllers
-  pid_subs_ = node_->create_subscription<otomo_msgs::msg::Pid>(
+  pid_subs_ = get_node()->create_subscription<otomo_msgs::msg::Pid>(
     "/otomo_controller/set_pid/default",
     rclcpp::SystemDefaultsQoS(),
     [this](const std::shared_ptr<otomo_msgs::msg::Pid> pid) -> void {
-      RCLCPP_WARN(node_->get_logger(), "Received PID update for default");
+      RCLCPP_WARN(get_node()->get_logger(), "Received PID update for default");
       PidParams new_pid;
       new_pid.p = pid->p;
       new_pid.i = pid->i;
@@ -98,7 +93,7 @@ cb_return OtomoController::on_configure(const rclcpp_lifecycle::State&) {
 }
 
 cb_return OtomoController::on_activate(const rclcpp_lifecycle::State&) {
-  auto logger = node_->get_logger();
+  auto logger = get_node()->get_logger();
 
   if (pid_controllers_.empty()) {
     RCLCPP_ERROR(logger, "no controllers are present");
@@ -115,7 +110,7 @@ cb_return OtomoController::on_activate(const rclcpp_lifecycle::State&) {
       );
 
       if (command_handle_p == command_interfaces_.end()) {
-        RCLCPP_ERROR(logger, "Unable to obtain command handle P for %s", controller_name);
+        RCLCPP_ERROR(logger, "Unable to obtain command handle P for %s", controller_name.c_str());
         return cb_return::ERROR;
       }
 
@@ -128,7 +123,7 @@ cb_return OtomoController::on_activate(const rclcpp_lifecycle::State&) {
       );
 
       if (command_handle_i == command_interfaces_.end()) {
-        RCLCPP_ERROR(logger, "Unable to obtain command handle I for %s", controller_name);
+        RCLCPP_ERROR(logger, "Unable to obtain command handle I for %s", controller_name.c_str());
         return cb_return::ERROR;
       }
 
@@ -141,7 +136,7 @@ cb_return OtomoController::on_activate(const rclcpp_lifecycle::State&) {
       );
 
       if (command_handle_d == command_interfaces_.end()) {
-        RCLCPP_ERROR(logger, "Unable to obtain command handle D for %s", controller_name);
+        RCLCPP_ERROR(logger, "Unable to obtain command handle D for %s", controller_name.c_str());
         return cb_return::ERROR;
       }
 
@@ -164,22 +159,10 @@ cb_return OtomoController::on_deactivate(const rclcpp_lifecycle::State&) {
   return cb_return::SUCCESS;
 }
 
-cb_return OtomoController::on_error(const rclcpp_lifecycle::State& previous_state) {
-  return on_deactivate(previous_state);
-}
+ci_return OtomoController::update(const rclcpp::Time&, const rclcpp::Duration&) {
+  auto logger = get_node()->get_logger();
 
-cb_return OtomoController::on_cleanup(const rclcpp_lifecycle::State& previous_state) {
-  return on_deactivate(previous_state);
-}
-
-cb_return OtomoController::on_shutdown(const rclcpp_lifecycle::State&) {
-  return cb_return::SUCCESS;
-}
-
-ci_return OtomoController::update() {
-  auto logger = node_->get_logger();
-
-  bool inactive = get_current_state().id() == lifecycle_msgs::msg::State::PRIMARY_STATE_INACTIVE;
+  bool inactive = get_lifecycle_state().id() == lifecycle_msgs::msg::State::PRIMARY_STATE_INACTIVE;
 
   if (inactive) {
     if (!is_halted_) {
@@ -195,9 +178,9 @@ ci_return OtomoController::update() {
       pid.update_pid = false;
       RCLCPP_INFO_STREAM(logger, "Updating " << name << " PID params: p: " << pid.p << ", i: " << pid.i << ", d: " << pid.d);
       auto handle = registered_pid_handles_.at(name);
-      handle.p.get().set_value(pid.p);
-      handle.i.get().set_value(pid.i);
-      handle.d.get().set_value(pid.d);
+      (void)handle.p.get().set_value(pid.p);
+      (void)handle.i.get().set_value(pid.i);
+      (void)handle.d.get().set_value(pid.d);
     }
   }
 
