@@ -79,7 +79,7 @@ private:
 
         otomo::TopMsg proto_msg;
         if (!proto_msg.ParseFromArray((const void *)&in_proto[0], in_proto.size())) {
-          RCLCPP_WARN(logger_, "Could not deserialize proto msg from mcu!, 0x%x, %d", in_proto.front(), in_proto.size());
+          RCLCPP_WARN(logger_, "Could not deserialize proto msg from mcu!, 0x%x, %ld", in_proto.front(), in_proto.size());
         } else if (proto_msg.has_state()) {
           const auto& state = proto_msg.state();
           auto dd_msg = otomo_msgs::msg::Diffdrive();
