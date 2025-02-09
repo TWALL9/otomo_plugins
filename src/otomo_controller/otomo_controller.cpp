@@ -9,6 +9,22 @@ namespace otomo_plugins::controllers {
 
 using std::placeholders::_1;
 
+std::vector<std::string> find_by_split(std::string s, std::string delim = " ") {
+  std::vector<std::string> v;
+
+  int start = 0;
+  int end = -1 * delim.size();
+  do {
+    start = end + delim.size();
+    end = s.find(delim, start);
+    v.push_back(s.substr(start, end - start));
+  } while (end != -1);
+
+  return v;
+}
+
+OtomoController::OtomoController() : controller_interface::ControllerInterface() {}
+
 cb_return OtomoController::on_init() {
   try {
     // default to nothing,
@@ -29,19 +45,21 @@ cb_return OtomoController::on_init() {
 }
 
 interface_return OtomoController::command_interface_configuration() const {
-  std::vector<std::string> command_interfaces;
+  controller_interface::InterfaceConfiguration conf = { controller_interface::interface_configuration_type::INDIVIDUAL, {} };
 
   if (pid_controllers_.empty()) {
     RCLCPP_WARN(get_node()->get_logger(), "command interface empty controller map");
   }
 
+  conf.names.reserve(pid_controllers_.size() * 3);
+
   for (const auto& pid_name : pid_controllers_) {
-    command_interfaces.push_back(pid_name.first + "/" + HW_IF_PROPORTIONAL);
-    command_interfaces.push_back(pid_name.first + "/" + HW_IF_INTEGRAL);
-    command_interfaces.push_back(pid_name.first + "/" + HW_IF_DERIVATIVE);
+    conf.names.push_back(pid_name.first + "/" + HW_IF_PROPORTIONAL);
+    conf.names.push_back(pid_name.first + "/" + HW_IF_INTEGRAL);
+    conf.names.push_back(pid_name.first + "/" + HW_IF_DERIVATIVE);
   }
 
-  return { controller_interface::interface_configuration_type::INDIVIDUAL, command_interfaces };
+  return conf;
 }
 
 interface_return OtomoController::state_interface_configuration() const {
@@ -95,6 +113,8 @@ cb_return OtomoController::on_configure(const rclcpp_lifecycle::State&) {
 cb_return OtomoController::on_activate(const rclcpp_lifecycle::State&) {
   auto logger = get_node()->get_logger();
 
+  registered_pid_handles_.clear();
+
   if (pid_controllers_.empty()) {
     RCLCPP_ERROR(logger, "no controllers are present");
     return cb_return::ERROR;
@@ -103,8 +123,9 @@ cb_return OtomoController::on_activate(const rclcpp_lifecycle::State&) {
       const auto controller_name = ctrl.first;
       const auto command_handle_p = std::find_if(
         command_interfaces_.begin(), command_interfaces_.end(),
-        [&controller_name](const auto& interface) {
-          return interface.get_name() == controller_name &&
+        [&controller_name, &logger](const auto& interface) {
+          auto interface_name = find_by_split(interface.get_name(), "/").front();
+          return interface_name == controller_name &&
             interface.get_interface_name() == HW_IF_PROPORTIONAL;
         }
       );
@@ -117,7 +138,8 @@ cb_return OtomoController::on_activate(const rclcpp_lifecycle::State&) {
       const auto command_handle_i = std::find_if(
         command_interfaces_.begin(), command_interfaces_.end(),
         [&controller_name](const auto& interface) {
-          return interface.get_name() == controller_name &&
+          auto interface_name = find_by_split(interface.get_name(), "/").front();
+          return interface_name == controller_name &&
             interface.get_interface_name() == HW_IF_INTEGRAL;
         }
       );
@@ -130,7 +152,8 @@ cb_return OtomoController::on_activate(const rclcpp_lifecycle::State&) {
       const auto command_handle_d = std::find_if(
         command_interfaces_.begin(), command_interfaces_.end(),
         [&controller_name](const auto& interface) {
-          return interface.get_name() == controller_name &&
+          auto interface_name = find_by_split(interface.get_name(), "/").front();
+          return interface_name == controller_name &&
             interface.get_interface_name() == HW_IF_DERIVATIVE;
         }
       );

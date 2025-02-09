@@ -22,6 +22,7 @@ using cb_return = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::Cal
 
 class OtomoController : public controller_interface::ControllerInterface {
 public:
+  OtomoController();
   RCLCPP_SHARED_PTR_DEFINITIONS(OtomoController)
 
   interface_return command_interface_configuration() const override;

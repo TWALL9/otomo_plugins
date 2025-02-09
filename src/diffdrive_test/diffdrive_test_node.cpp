@@ -32,7 +32,7 @@ public:
     sub_ = this->create_subscription<otomo_msgs::msg::Diffdrive>("cmd_robot_diff",
       10, std::bind(&DiffdriveTestNode::cmd_callback, this, std::placeholders::_1));
 
-    serial_port_ = std::shared_ptr<async_serial::SerialPort>(new async_serial::SerialPort("/dev/ttyOtomo", 115200));
+    serial_port_ = std::make_shared<async_serial::SerialPort>("/dev/ttyACM1", 115200);
 
     if (!serial_port_->open()) {
       RCLCPP_ERROR(logger_, "Cannot open serial port!");
