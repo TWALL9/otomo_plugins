@@ -197,7 +197,7 @@ void OtomoDiffdrive::async_serial_callback(const std::vector<uint8_t>& buf, size
         ss << std::fixed << std::setprecision(5);
         ss << stamp << ", " << l_wheel_.cmd_ << ", " << l_wheel_.vel_ << ", ";
         ss << r_wheel_.cmd_ << ", " << r_wheel_.vel_;
-        // RCLCPP_INFO(get_logger(), "%s", ss.str().c_str());
+        // RCLCPP_INFO(get_logger(), "MOTOR: %s", ss.str().c_str());
       } else if (proto_msg.has_imu()) {
         const auto imu = proto_msg.imu();
         const auto a_x = imu.accel().x();
@@ -206,7 +206,7 @@ void OtomoDiffdrive::async_serial_callback(const std::vector<uint8_t>& buf, size
         std::stringstream ss;
         ss << std::fixed << std::setprecision(5);
         ss << a_x << ", " << a_y << ", " << a_z;
-        RCLCPP_INFO(get_logger(), "%s", ss.str().c_str());
+        // RCLCPP_INFO(get_logger(), "IMU: %s", ss.str().c_str());
       } else if (proto_msg.has_drive_response()) {
         RCLCPP_INFO_STREAM(get_logger(), "Got robot response");
       }
